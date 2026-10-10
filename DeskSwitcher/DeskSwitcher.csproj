@@ -7,7 +7,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>True</UseWindowsForms>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Slions.VirtualDesktop.WPF" Version="6.9.2" />
@@ -15,6 +20,14 @@
  <!-- чтобы типы WPF и WinForms (Button, Application...) не конфликтовали -->
   <Using Remove="System.Windows.Forms" />
   <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
   </ItemGroup>
 
 

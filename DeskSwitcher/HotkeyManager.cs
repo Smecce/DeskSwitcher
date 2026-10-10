@@ -25,8 +25,7 @@ public sealed class HotkeyManager : IDisposable
     public HotkeyManager(IntPtr hwnd)
     {
         _hwnd = hwnd;
-        _source = HwndSource.FromHwnd(hwnd)
-                  ?? throw new InvalidOperationException("У окна нет HWND.");
+        _source = HwndSource.FromHwnd(hwnd)?? throw new InvalidOperationException("У окна нет HWND.");
         _source.AddHook(WndProc);
     }
 
