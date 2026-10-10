@@ -9,6 +9,9 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Windows.Interop;
 
 using DesktopSwitcher;
@@ -22,21 +25,108 @@ namespace DeskSwitcher;
 public partial class MainWindow : Window
 {
     private readonly DesktopController _desktops = new();
+    private TrayIcon? _tray;
+    private HotkeyManager? _hotkeys;
+    private bool _exiting;
+
+
 
     public MainWindow()
     {
         InitializeComponent();
+
         _desktops.DesktopsChanged += (_, _) => Rebuild();
         _desktops.CurrentChanged += (_, _) => Rebuild();
 
-        Loaded += (_, _) =>
-        {
-            // закрепляем окно, чтобы оно было видно на всех столах
-            _desktops.PinWindow(new WindowInteropHelper(this).Handle);
-            Rebuild();
-        };
-        Closed += (_, _) => _desktops.Dispose();
+        SourceInitialized += OnSourceInitialized;
+        Loaded += (_, _) => { PinToAllDesktops(); Rebuild(); };
+        StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) HideToTray(); };
+        Closing += OnClosing;
+        Closed += OnClosed;
+
+        // при выходе из Windows не мешаем завершению сеанса
+        Application.Current.SessionEnding += (_, _) => _exiting = true;
     }
+
+    // ---------- запуск: трей и горячие клавиши ----------
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+
+        _tray = new TrayIcon("DeskSwitcher");
+        _tray.ShowRequested += (_, _) => ShowFromTray();
+        _tray.ExitRequested += (_, _) => ExitApp();
+
+        _hotkeys = new HotkeyManager(hwnd);
+        RegisterHotkeys();
+    }
+
+    private void RegisterHotkeys()
+    {
+        var failed = new List<string>();
+        const HotkeyModifiers mod = HotkeyModifiers.Control | HotkeyModifiers.Alt;
+
+        void Reg(string label, Key key, Action action)
+        {
+            if (!_hotkeys!.Register(mod, key, action))
+                failed.Add($"Ctrl+Alt+{label}");
+        }
+
+        for (int n = 1; n <= 9; n++)
+        {
+            int index = n - 1;                       // копия для замыкания
+            Reg(n.ToString(), Key.D0 + n, () => _desktops.SwitchTo(index));
+        }
+        Reg("←", Key.Left, () => _desktops.SwitchLeft());
+        Reg("→", Key.Right, () => _desktops.SwitchRight());
+
+        if (failed.Count > 0)
+            _tray?.Notify("Горячие клавиши",
+                "Не удалось зарегистрировать: " + string.Join(", ", failed) +
+                ". Возможно, они заняты другой программой.");
+    }
+
+    private void PinToAllDesktops() =>
+        _desktops.PinWindow(new WindowInteropHelper(this).Handle);
+
+    // ---------- трей ----------
+
+    private void HideToTray()
+    {
+        Hide();
+        WindowState = WindowState.Normal;   // чтобы окно не вернулось свёрнутым
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void ExitApp()
+    {
+        _exiting = true;
+        Close();
+    }
+
+    // Крестик прячет окно в трей. Реальный выход — через меню трея.
+    private void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_exiting) return;
+        e.Cancel = true;
+        HideToTray();
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _hotkeys?.Dispose();
+        _tray?.Dispose();
+        _desktops.Dispose();
+    }
+
+    // ---------- кнопки ----------
 
     private void Rebuild()
     {
@@ -45,7 +135,7 @@ public partial class MainWindow : Window
 
         for (int i = 0; i < _desktops.Count; i++)
         {
-            int index = i; // копия для замыкания
+            int index = i;
             var btn = new Button
             {
                 Content = _desktops.GetName(i),
@@ -57,6 +147,7 @@ public partial class MainWindow : Window
             Panel.Children.Add(btn);
         }
     }
+
 
 
 
