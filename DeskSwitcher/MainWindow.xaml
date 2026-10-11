@@ -5,7 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DeskSwitcher"
         mc:Ignorable="d"
-         Title="Desktops" Height="80" Width="400" Topmost="True">
+        Title="Desktops" Height="80" Width="400" Topmost="True"
+        Loaded="Window_Loaded"
+        >
     <StackPanel x:Name="Panel" Orientation="Horizontal" Margin="6"/>
 
 </Window>
