@@ -29,7 +29,7 @@
 ## Запуск
 
 ```bash
-git clone <адрес-репозитория>
+git clone https://github.com/Smecce/DeskSwitcher
 cd DeskSwitcher
 dotnet run --project DeskSwitcher
 ```
