@@ -76,6 +76,7 @@ public partial class MainWindow : Window
 		{
 			int index = n - 1;                       // копия для замыкания
 			Reg(n.ToString(), Key.D0 + n, () => _desktops.SwitchTo(index));
+			Reg(n.ToString(), Key.NumPad0 + n, () => _desktops.SwitchTo(index));
 		}
 		Reg("←", Key.Left, () => _desktops.SwitchLeft());
 		Reg("→", Key.Right, () => _desktops.SwitchRight());
