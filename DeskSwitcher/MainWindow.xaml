@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:DeskSwitcher"
         mc:Ignorable="d"
 		    Icon="app.ico"
-        Title="Desktops" Height="80" Width="400" Topmost="True"
+        Title="Desktops" Topmost="True"
         Loaded="On_Loaded"
         Closing="OnClosing"
 				Closed="OnClosed"

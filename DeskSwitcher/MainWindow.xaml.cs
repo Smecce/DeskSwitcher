@@ -16,15 +16,36 @@ public partial class MainWindow : Window
 	private HotkeyManager? _hotkeys;
 	private bool _exiting;
 
+	private OsdWindow? _osd; // всплывашка :)
+
 	public MainWindow()
 	{
 		InitializeComponent();
 
 		_desktops.DesktopsChanged += (_, _) => Rebuild();
-		_desktops.CurrentChanged += (_, _) => Rebuild();
+		_desktops.CurrentChanged += (_, _) =>
+		{
+			Rebuild();
+			if (!IsVisible) ShowDesktopOsd();   // если окно видно, подсказка не нужна
+		};
 
 		// при выходе из Windows не мешаем завершению сеанса
 		Application.Current.SessionEnding += (_, _) => _exiting = true;
+	}
+
+
+	private void ShowOsd(string title, string? subtitle = null)
+	{
+		_osd?.Dismiss();                     // убираем предыдущую всплывашку
+		_osd = new OsdWindow(title, subtitle);
+		_osd.Show();
+	}
+
+	private void ShowDesktopOsd()
+	{
+		int cur = _desktops.CurrentIndex;
+		if (cur < 0) return;
+		ShowOsd(_desktops.GetName(cur), $"{cur + 1} из {_desktops.Count}");
 	}
 
 	// ---------- запуск: трей и горячие клавиши ----------
@@ -98,6 +119,8 @@ public partial class MainWindow : Window
 		_hotkeys?.Dispose();
 		_tray?.Dispose();
 		_desktops.Dispose();
+
+		_osd?.Dismiss();
 	}
 
 	// ---------- кнопки ----------
@@ -127,6 +150,7 @@ public partial class MainWindow : Window
 		Rebuild();
 
 		HideToTray();
+		ShowOsd("DeskSwitcher запущен", "Значок в трее · Ctrl+Alt+1…9 — переключение столов");
 	}
 	private void On_StateChanged(object sender, EventArgs e)
 	{

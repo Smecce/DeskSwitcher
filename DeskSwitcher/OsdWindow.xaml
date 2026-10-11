@@ -1,0 +1,22 @@
+﻿<Window x:Class="DeskSwitcher.OsdWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ShowActivated="False" Topmost="True" Focusable="False"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight"
+				
+				>
+	<Border x:Name="Card" CornerRadius="16" Padding="32,18"
+            BorderBrush="#55FFFFFF" BorderThickness="1" Opacity="0.60">
+		<Border.Background >
+			<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+				<GradientStop Color="#2446AA" Offset="0"/>
+				<GradientStop Color="#602CA8" Offset="1"/>
+			</LinearGradientBrush>
+		</Border.Background>
+		<StackPanel>
+			<TextBlock x:Name="TitleText" Text="Стол #3" Foreground="White" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+			<TextBlock x:Name="SubtitleText" Text="1 из 3" Foreground="#FFC145" FontSize="13" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+		</StackPanel>
+	</Border>
+</Window>
