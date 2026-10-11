@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using WindowsDesktop;
 
-namespace DesktopSwitcher;
+namespace DeskSwitcher;
 
 public sealed class DesktopController : IDisposable
 {

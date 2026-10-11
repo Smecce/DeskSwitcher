@@ -1,155 +1,135 @@
-﻿using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Interop;
 
-using DesktopSwitcher;
-
 namespace DeskSwitcher;
-
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly DesktopController _desktops = new();
-    private TrayIcon? _tray;
-    private HotkeyManager? _hotkeys;
-    private bool _exiting;
+	private readonly DesktopController _desktops = new();
+	private TrayIcon? _tray;
+	private HotkeyManager? _hotkeys;
+	private bool _exiting;
 
+	public MainWindow()
+	{
+		InitializeComponent();
 
+		_desktops.DesktopsChanged += (_, _) => Rebuild();
+		_desktops.CurrentChanged += (_, _) => Rebuild();
 
-    public MainWindow()
-    {
-        InitializeComponent();
+		// при выходе из Windows не мешаем завершению сеанса
+		Application.Current.SessionEnding += (_, _) => _exiting = true;
+	}
 
-        _desktops.DesktopsChanged += (_, _) => Rebuild();
-        _desktops.CurrentChanged += (_, _) => Rebuild();
+	// ---------- запуск: трей и горячие клавиши ----------
 
-        SourceInitialized += OnSourceInitialized;
-        Loaded += (_, _) => { PinToAllDesktops(); Rebuild(); };
-        StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) HideToTray(); };
-        Closing += OnClosing;
-        Closed += OnClosed;
+	private void OnSourceInitialized(object? sender, EventArgs e)
+	{
+		var hwnd = new WindowInteropHelper(this).Handle;
 
-        // при выходе из Windows не мешаем завершению сеанса
-        Application.Current.SessionEnding += (_, _) => _exiting = true;
-    }
+		_tray = new TrayIcon("DeskSwitcher");
+		_tray.ShowRequested += (_, _) => ShowFromTray();
+		_tray.ExitRequested += (_, _) => ExitApp();
 
-    // ---------- запуск: трей и горячие клавиши ----------
+		_hotkeys = new HotkeyManager(hwnd);
+		RegisterHotkeys();
+	}
 
-    private void OnSourceInitialized(object? sender, EventArgs e)
-    {
-        var hwnd = new WindowInteropHelper(this).Handle;
+	private void RegisterHotkeys()
+	{
+		var failed = new List<string>();
+		const HotkeyModifiers mod = HotkeyModifiers.Control | HotkeyModifiers.Alt;
 
-        _tray = new TrayIcon("DeskSwitcher");
-        _tray.ShowRequested += (_, _) => ShowFromTray();
-        _tray.ExitRequested += (_, _) => ExitApp();
+		void Reg(string label, Key key, Action action)
+		{
+			if (!_hotkeys!.Register(mod, key, action)) failed.Add($"Ctrl+Alt+{label}");
+		}
 
-        _hotkeys = new HotkeyManager(hwnd);
-        RegisterHotkeys();
-    }
+		for (int n = 1; n <= 9; n++)
+		{
+			int index = n - 1;                       // копия для замыкания
+			Reg(n.ToString(), Key.D0 + n, () => _desktops.SwitchTo(index));
+		}
+		Reg("←", Key.Left, () => _desktops.SwitchLeft());
+		Reg("→", Key.Right, () => _desktops.SwitchRight());
 
-    private void RegisterHotkeys()
-    {
-        var failed = new List<string>();
-        const HotkeyModifiers mod = HotkeyModifiers.Control | HotkeyModifiers.Alt;
+		if (failed.Count > 0) _tray?.Notify("Горячие клавиши", "Не удалось зарегистрировать: " + string.Join(", ", failed) + ". Возможно, они заняты другой программой.");
+	}
 
-        void Reg(string label, Key key, Action action)
-        {
-            if (!_hotkeys!.Register(mod, key, action))
-                failed.Add($"Ctrl+Alt+{label}");
-        }
+	private void PinToAllDesktops() => _desktops.PinWindow(new WindowInteropHelper(this).Handle);
 
-        for (int n = 1; n <= 9; n++)
-        {
-            int index = n - 1;                       // копия для замыкания
-            Reg(n.ToString(), Key.D0 + n, () => _desktops.SwitchTo(index));
-        }
-        Reg("←", Key.Left, () => _desktops.SwitchLeft());
-        Reg("→", Key.Right, () => _desktops.SwitchRight());
+	// ---------- трей ----------
 
-        if (failed.Count > 0)
-            _tray?.Notify("Горячие клавиши",
-                "Не удалось зарегистрировать: " + string.Join(", ", failed) +
-                ". Возможно, они заняты другой программой.");
-    }
+	private void HideToTray()
+	{
+		Hide();
+		WindowState = WindowState.Normal;   // чтобы окно не вернулось свёрнутым
+	}
 
-    private void PinToAllDesktops() =>
-        _desktops.PinWindow(new WindowInteropHelper(this).Handle);
+	private void ShowFromTray()
+	{
+		Show();
+		WindowState = WindowState.Normal;
+		Activate();
+	}
 
-    // ---------- трей ----------
+	private void ExitApp()
+	{
+		_exiting = true;
+		Close();
+	}
 
-    private void HideToTray()
-    {
-        Hide();
-        WindowState = WindowState.Normal;   // чтобы окно не вернулось свёрнутым
-    }
+	// Крестик прячет окно в трей. Реальный выход — через меню трея.
+	private void OnClosing(object? sender, CancelEventArgs e)
+	{
+		if (_exiting) return;
+		e.Cancel = true;
+		HideToTray();
+	}
 
-    private void ShowFromTray()
-    {
-        Show();
-        WindowState = WindowState.Normal;
-        Activate();
-    }
+	private void OnClosed(object? sender, EventArgs e)
+	{
+		_hotkeys?.Dispose();
+		_tray?.Dispose();
+		_desktops.Dispose();
+	}
 
-    private void ExitApp()
-    {
-        _exiting = true;
-        Close();
-    }
+	// ---------- кнопки ----------
 
-    // Крестик прячет окно в трей. Реальный выход — через меню трея.
-    private void OnClosing(object? sender, CancelEventArgs e)
-    {
-        if (_exiting) return;
-        e.Cancel = true;
-        HideToTray();
-    }
+	private void Rebuild()
+	{
+		Panel.Children.Clear();
+		int current = _desktops.CurrentIndex;
 
-    private void OnClosed(object? sender, EventArgs e)
-    {
-        _hotkeys?.Dispose();
-        _tray?.Dispose();
-        _desktops.Dispose();
-    }
+		for (int i = 0; i < _desktops.Count; i++)
+		{
+			int index = i;
+			var btn = new Button
+			{
+				Content = _desktops.GetName(i),
+				Margin = new Thickness(2),
+				Padding = new Thickness(8, 2, 8, 2),
+				FontWeight = i == current ? FontWeights.Bold : FontWeights.Normal
+			};
+			btn.Click += (_, _) => _desktops.SwitchTo(index);
+			Panel.Children.Add(btn);
+		}
+	}
+	private void On_Loaded(object sender, RoutedEventArgs e)
+	{
+		PinToAllDesktops();
+		Rebuild();
 
-    // ---------- кнопки ----------
-
-    private void Rebuild()
-    {
-        Panel.Children.Clear();
-        int current = _desktops.CurrentIndex;
-
-        for (int i = 0; i < _desktops.Count; i++)
-        {
-            int index = i;
-            var btn = new Button
-            {
-                Content = _desktops.GetName(i),
-                Margin = new Thickness(2),
-                Padding = new Thickness(8, 2, 8, 2),
-                FontWeight = i == current ? FontWeights.Bold : FontWeights.Normal
-            };
-            btn.Click += (_, _) => _desktops.SwitchTo(index);
-            Panel.Children.Add(btn);
-        }
-    }
-
-    private void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        HideToTray();
-    }
+		HideToTray();
+	}
+	private void On_StateChanged(object sender, EventArgs e)
+	{
+		if (WindowState == WindowState.Minimized) HideToTray();
+	}
 }
