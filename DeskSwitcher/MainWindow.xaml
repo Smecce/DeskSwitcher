@@ -11,7 +11,9 @@
         Closing="OnClosing"
 				Closed="OnClosed"
 				StateChanged ="On_StateChanged"
-				SourceInitialized="OnSourceInitialized"
+				SourceInitialized="OnSourceInitialized" 
+				SizeToContent="WidthAndHeight" 
+				ResizeMode="NoResize"				
         >
 	<StackPanel x:Name="Panel" Orientation="Horizontal" Margin="6"/>
 
