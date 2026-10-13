@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.ComponentModel;
 using System.Windows.Interop;
+using System.Runtime.InteropServices;
 
 namespace DeskSwitcher;
 
@@ -33,20 +34,19 @@ public partial class MainWindow : Window
 		Application.Current.SessionEnding += (_, _) => _exiting = true;
 	}
 
-
-	private void ShowOsd(string title, string? subtitle = null)
+	private void ShowOsd(string title, string? subtitle = null, int time = 1200)
 	{
 		_osd?.Dismiss();                     // убираем предыдущую всплывашку
-		_osd = new OsdWindow(title, subtitle);
+		_osd = new OsdWindow(title, subtitle, time);
 		_osd.Show();
 	}
-
 	private void ShowDesktopOsd()
 	{
 		int cur = _desktops.CurrentIndex;
 		if (cur < 0) return;
 		ShowOsd(_desktops.GetName(cur), $"{cur + 1} из {_desktops.Count}");
 	}
+	public void ShowAlreadyRunning() =>ShowOsd("DeskSwitcher уже запущен", "Значок в трее · Ctrl+Alt+1…9", 3000);
 
 	// ---------- запуск: трей и горячие клавиши ----------
 
@@ -94,7 +94,7 @@ public partial class MainWindow : Window
 		WindowState = WindowState.Normal;   // чтобы окно не вернулось свёрнутым
 	}
 
-	private void ShowFromTray()
+	public void ShowFromTray()
 	{
 		Show();
 		WindowState = WindowState.Normal;
@@ -145,14 +145,35 @@ public partial class MainWindow : Window
 			Panel.Children.Add(btn);
 		}
 	}
-	private void On_Loaded(object sender, RoutedEventArgs e)
+	private async void On_Loaded(object sender, RoutedEventArgs e)
 	{
-		PinToAllDesktops();
 		Rebuild();
+
+		// Окно должно оставаться видимым, пока оболочка Windows его не «заметит».
+		bool pinned = await TryPinAsync();
 
 		HideToTray();
 		ShowOsd("DeskSwitcher запущен", "Значок в трее · Ctrl+Alt+1…9 — переключение столов");
+
+		if (!pinned) _tray?.Notify("DeskSwitcher", "Не удалось закрепить окно на всех столах.");
 	}
+	private async Task<bool> TryPinAsync(int attempts = 20, int delayMs = 100)
+	{
+		for (int i = 0; i < attempts; i++)
+		{
+			try
+			{
+				PinToAllDesktops();
+				return true;
+			}
+			catch (COMException)           // оболочка ещё не знает окно
+			{
+				await Task.Delay(delayMs);
+			}
+		}
+		return false;
+	}
+
 	private void On_StateChanged(object sender, EventArgs e)
 	{
 		if (WindowState == WindowState.Minimized) HideToTray();

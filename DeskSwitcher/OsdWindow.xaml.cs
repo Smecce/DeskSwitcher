@@ -16,7 +16,7 @@ public partial class OsdWindow : Window
 	private readonly DispatcherTimer _timer;
 	private bool _closed;
 
-	public OsdWindow(string title, string? subtitle = null)
+	public OsdWindow(string title, string? subtitle = null, int time = 1200)
 	{
 		InitializeComponent();
 
@@ -31,7 +31,7 @@ public partial class OsdWindow : Window
 		Left = wa.Left + wa.Width - Card.DesiredSize.Width - 30;
 		Top = wa.Bottom - Card.DesiredSize.Height - 30;
 
-		_timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
+		_timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(time) };
 		_timer.Tick += (_, _) => { _timer.Stop(); FadeOutAndClose(); };
 
 		SourceInitialized += (_, _) => MakeClickThrough();
