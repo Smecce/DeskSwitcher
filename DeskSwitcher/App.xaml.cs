@@ -19,16 +19,36 @@ namespace DeskSwitcher
 		private bool _owned;
 		private EventWaitHandle? _showEvent;
 		private RegisteredWaitHandle? _showWait;
+		private bool _errorShown;
 
 		public App()
 		{
 			DispatcherUnhandledException += (_, e) =>
 			{
-				MessageBox.Show(e.Exception.Message, "DeskSwitcher", MessageBoxButton.OK, MessageBoxImage.Error);
+				Logger.Error("Необработанное исключение в UI-потоке", e.Exception);
+				ShowErrorOnce(e.Exception);
 				e.Handled = true;
 			};
-		}
 
+			AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+				Logger.Error("Критическая ошибка, программа завершается", e.ExceptionObject as Exception);
+
+			TaskScheduler.UnobservedTaskException += (_, e) =>
+			{
+				Logger.Error("Необработанное исключение в задаче", e.Exception);
+				e.SetObserved();
+			};
+		}
+		private void ShowErrorOnce(Exception ex)
+		{
+			if (_errorShown) return;     // дальше пишем только в журнал
+			_errorShown = true;
+
+			MessageBox.Show(
+				$"{ex.Message}\n\nПодробности в журнале:\n{Logger.FilePath}\n\n" +
+				"Следующие ошибки будут только записаны в журнал.",
+				"DeskSwitcher", MessageBoxButton.OK, MessageBoxImage.Error);
+		}
 
 		protected override void OnStartup(StartupEventArgs e)
 		{
@@ -42,7 +62,7 @@ namespace DeskSwitcher
 				Shutdown();
 				return;
 			}
-
+			Logger.Info($"Запуск. Windows {Environment.OSVersion.Version}, .NET {Environment.Version}");
 			base.OnStartup(e);
 
 			// Ждём сигналы от повторных запусков. Отдельный поток для этого не нужен.
@@ -55,8 +75,8 @@ namespace DeskSwitcher
 		{
 			if (MainWindow is DeskSwitcher.MainWindow w)
 			{
-				w.ShowFromTray();					//	показываем окошко
-				w.ShowAlreadyRunning();		//	показываем всплывашку
+				w.ShowFromTray();         //	показываем окошко
+				w.ShowAlreadyRunning();   //	показываем всплывашку
 			}
 		}
 
@@ -70,9 +90,6 @@ namespace DeskSwitcher
 		}
 		[DllImport("user32.dll")]
 		private static extern bool AllowSetForegroundWindow(int dwProcessId);
-
-
-
 	}
 
 }

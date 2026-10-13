@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace DeskSwitcher;
@@ -24,6 +26,7 @@ public sealed class TrayIcon : IDisposable
 
 		menu.Items.Add("Показать", null, (_, _) => ShowRequested?.Invoke(this, EventArgs.Empty));
 		menu.Items.Add(autoItem);
+		menu.Items.Add("Открыть журнал ошибок", null, (_, _) => OpenLog());
 		menu.Items.Add(new ToolStripSeparator());
 		menu.Items.Add("Выход", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
 
@@ -50,5 +53,19 @@ public sealed class TrayIcon : IDisposable
 	{
 		_icon.Visible = false;   // иначе значок «зависает» в трее до наведения мыши
 		_icon.Dispose();
+	}
+
+	private static void OpenLog()
+	{
+		try
+		{
+			var target = File.Exists(Logger.FilePath) ? Logger.FilePath : Logger.Folder;
+			Directory.CreateDirectory(Logger.Folder);
+			Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+		}
+		catch (Exception ex)
+		{
+			Logger.Error("Не удалось открыть журнал", ex);
+		}
 	}
 }

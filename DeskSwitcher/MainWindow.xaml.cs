@@ -46,7 +46,7 @@ public partial class MainWindow : Window
 		if (cur < 0) return;
 		ShowOsd(_desktops.GetName(cur), $"{cur + 1} из {_desktops.Count}");
 	}
-	public void ShowAlreadyRunning() =>ShowOsd("DeskSwitcher уже запущен", "Значок в трее · Ctrl+Alt+1…9", 3000);
+	public void ShowAlreadyRunning() => ShowOsd("DeskSwitcher уже запущен", "Значок в трее · Ctrl+Alt+1…9", 3000);
 
 	// ---------- запуск: трей и горячие клавиши ----------
 
@@ -81,7 +81,11 @@ public partial class MainWindow : Window
 		Reg("←", Key.Left, () => _desktops.SwitchLeft());
 		Reg("→", Key.Right, () => _desktops.SwitchRight());
 
-		if (failed.Count > 0) _tray?.Notify("Горячие клавиши", "Не удалось зарегистрировать: " + string.Join(", ", failed) + ". Возможно, они заняты другой программой.");
+		if (failed.Count > 0)
+		{
+			Logger.Error("Не удалось зарегистрировать горячие клавиши: " + string.Join(", ", failed));
+			_tray?.Notify("Горячие клавиши", "Не удалось зарегистрировать: " + string.Join(", ", failed) + ". Возможно, они заняты другой программой.");
+		}
 	}
 
 	private void PinToAllDesktops() => _desktops.PinWindow(new WindowInteropHelper(this).Handle);
@@ -159,6 +163,7 @@ public partial class MainWindow : Window
 	}
 	private async Task<bool> TryPinAsync(int attempts = 20, int delayMs = 100)
 	{
+		COMException? last = null;
 		for (int i = 0; i < attempts; i++)
 		{
 			try
@@ -166,11 +171,14 @@ public partial class MainWindow : Window
 				PinToAllDesktops();
 				return true;
 			}
-			catch (COMException)           // оболочка ещё не знает окно
+			catch (COMException ex)
 			{
+				last = ex;
 				await Task.Delay(delayMs);
 			}
 		}
+		Logger.Error("Не удалось закрепить окно на всех столах", last);
+
 		return false;
 	}
 
