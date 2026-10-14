@@ -60,6 +60,7 @@ public sealed class DesktopController : IDisposable
 		if (index < 0 || index >= all.Length) return false;
 
 		all[index].Switch();
+		FocusAfterSwitch();
 		return true;
 	}
 
@@ -70,9 +71,11 @@ public sealed class DesktopController : IDisposable
 		{
 			var all = GetAll();
 			all[all.Length - 1].Switch();
+			FocusAfterSwitch();
 			return true;
 		}
 		target.Switch();
+		FocusAfterSwitch();
 		return true;
 	}
 
@@ -83,9 +86,11 @@ public sealed class DesktopController : IDisposable
 		{
 			var all = GetAll();
 			all[0].Switch();
+			FocusAfterSwitch();
 			return true;
 		}
 		target.Switch();
+		FocusAfterSwitch();
 		return true;
 	}
 
@@ -128,6 +133,20 @@ public sealed class DesktopController : IDisposable
 		else _ui.Post(_ => { if (!_disposed) handler(this, EventArgs.Empty); }, null);
 	}
 
+
+	private static async void FocusAfterSwitch()
+	{
+		await Task.Delay(120);   // оболочке нужно мгновение, чтобы «скрыть» окна старого стола
+		try
+		{
+			FocusHelper.FocusTopWindowOnCurrentDesktop();
+		}
+		catch (Exception ex)
+		{
+			Logger.Error("Не удалось передать фокус после переключения", ex);
+		}
+	}
+
 	public void Dispose()
 	{
 		if (_disposed) return;
@@ -138,4 +157,6 @@ public sealed class DesktopController : IDisposable
 		VirtualDesktop.Renamed -= OnListChanged;
 		VirtualDesktop.CurrentChanged -= OnCurrentChanged;
 	}
+
+
 }
